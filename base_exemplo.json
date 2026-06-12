@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "cycle": {
+    "start": "2026-06-15",
+    "end": "2026-07-15",
+    "initialBalance": 0
+  },
+  "transactions": [
+    {
+      "id": "example-dentista-2026-06-09",
+      "date": "2026-06-09",
+      "description": "Dentista",
+      "value": 2380,
+      "category": "Saúde",
+      "type": "Necessidade",
+      "payment": "Parcelado",
+      "installments": 4,
+      "currentInstallment": 1,
+      "refundStatus": "Não se aplica",
+      "refundCompany": "",
+      "notes": "Compra em 4x de R$ 595. O painel considera apenas a parcela atual nos gastos do ciclo."
+    },
+    {
+      "id": "example-taxi-syngenta-2026-06-12",
+      "date": "2026-06-12",
+      "description": "Táxi Syngenta",
+      "value": 12.47,
+      "category": "Transporte",
+      "type": "Reembolso",
+      "payment": "À vista",
+      "installments": 1,
+      "currentInstallment": 1,
+      "refundStatus": "Pendente",
+      "refundCompany": "Syngenta",
+      "notes": "Corrida por conta de trabalho."
+    }
+  ]
+}
