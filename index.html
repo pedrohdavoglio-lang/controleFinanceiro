@@ -1,201 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Painel Financeiro Moni | Base Local</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Meu Financeiro</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="shell">
-    <section class="hero">
-      <div class="hero-card">
-        <div class="eyebrow">MVP local com base exportável</div>
-        <h1>Controle financeiro da Moni</h1>
-        <p class="hero-text">
-          Um painel bonito para lançar gastos, importar uma base, exportar o que foi atualizado
-          e seguir usando o chat como apoio para fechamento e análise.
-        </p>
+<div class="app">
+  <header class="header">
+    <div>
+      <h1>Meu Financeiro</h1>
+      <p>Planejador financeiro por ciclos</p>
+    </div>
+    <div class="header-actions">
+      <div class="cycle-card">
+        <small>Ciclo ativo</small>
+        <strong id="cycleTitle">Nenhum ciclo</strong>
+        <span id="cycleDates">Gere ciclos no Perfil</span>
       </div>
+      <button id="profileBtn" class="profile-btn"><span class="avatar">M</span> Perfil</button>
+    </div>
+  </header>
 
-      <aside class="base-card">
-        <div>
-          <div class="date-chip" id="cycleChip">💳 Ciclo atual</div>
-          <h2 style="margin-top:18px;">Base do controle</h2>
-          <p class="small">
-            Os dados ficam salvos neste navegador. Para trocar pelo chat, exporte a base JSON e envie o arquivo.
-          </p>
-        </div>
-        <div class="base-actions">
-          <label class="file-button secondary">
-            Importar base JSON
-            <input id="importFile" type="file" accept="application/json,.json" />
-          </label>
-          <button id="exportJsonButton">Exportar base JSON</button>
-          <button id="exportCsvButton" class="secondary">Exportar CSV simples</button>
-        </div>
-      </aside>
-    </section>
+  <nav class="tabs">
+    <button class="tab active" data-view="summary">Resumo</button>
+    <button class="tab" data-view="cash">Gastos do Mês</button>
+    <button class="tab" data-view="installments">Parceladas</button>
+    <button class="tab" data-view="receivables">A Receber</button>
+    <button class="tab" data-view="payables">A Pagar</button>
+    <button class="tab" data-view="fixed">Contas Fixas</button>
+    <button class="tab" data-view="goals">Reservas e Objetivos</button>
+    <button class="tab" data-view="history">Histórico</button>
+  </nav>
 
-    <section class="metrics">
-      <article class="metric">
-        <div class="metric-label">Saldo inicial</div>
-        <div class="metric-value" id="initialBalanceCard">R$ 0,00</div>
-        <div class="metric-note">Base do ciclo atual.</div>
-      </article>
-      <article class="metric">
-        <div class="metric-label">Gastos</div>
-        <div class="metric-value" id="spentCard">R$ 0,00</div>
-        <div class="metric-note">Compras e parcelas lançadas.</div>
-      </article>
-      <article class="metric">
-        <div class="metric-label">A receber</div>
-        <div class="metric-value" id="refundCard">R$ 0,00</div>
-        <div class="metric-note">Reembolsos pendentes.</div>
-      </article>
-      <article class="metric">
-        <div class="metric-label">Sobra projetada</div>
-        <div class="metric-value" id="projectedCard">R$ 0,00</div>
-        <div class="metric-note">Saldo - gastos + reembolsos.</div>
-      </article>
-    </section>
-
-    <section class="layout">
-      <div>
-        <article class="panel">
-          <div class="panel-title">
-            <div>
-              <h3>Configuração do ciclo</h3>
-              <p class="small" style="margin:6px 0 0;">Ajuste o saldo inicial e as datas do ciclo.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <input id="cycleStartInput" type="date" />
-            <input id="cycleEndInput" type="date" />
-            <input id="initialBalanceInput" type="number" min="0" step="0.01" placeholder="Saldo inicial" />
-            <button id="saveCycleButton">Salvar ciclo</button>
-          </div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h3>Uso do saldo</h3>
-            <span class="small" id="usageLabel">0%</span>
-          </div>
-          <div class="donut-wrap">
-            <div class="donut" id="donut">
-              <div>
-                <strong id="donutValue">0%</strong>
-                <span>utilizado</span>
-              </div>
-            </div>
-          </div>
-          <div id="projectionInsight" class="insight">
-            Informe seu saldo inicial para ativar a projeção.
-          </div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h3>Gastos por categoria</h3>
-          </div>
-          <div id="categoryBars"></div>
-        </article>
-      </div>
-
-      <div>
-        <article class="panel">
-          <div class="panel-title">
-            <div>
-              <h3 id="formTitle">Novo lançamento</h3>
-              <p class="small" style="margin:6px 0 0;">Use esta tela para registrar compras, reembolsos e parcelamentos.</p>
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <input id="dateInput" type="date" />
-            <input id="descriptionInput" placeholder="Descrição. Ex.: Táxi Syngenta" />
-            <input id="valueInput" type="number" min="0" step="0.01" placeholder="Valor total" />
-            <select id="categoryInput">
-              <option>Saúde</option>
-              <option>Transporte</option>
-              <option>Alimentação</option>
-              <option>Livros</option>
-              <option>Casa</option>
-              <option>Beleza</option>
-              <option>Trabalho</option>
-              <option>Outros</option>
-            </select>
-            <select id="typeInput">
-              <option>Necessidade</option>
-              <option>Planejada</option>
-              <option>Impulso</option>
-              <option>Reembolso</option>
-            </select>
-            <select id="paymentInput">
-              <option>À vista</option>
-              <option>Parcelado</option>
-            </select>
-            <input id="installmentsInput" class="hidden" type="number" min="1" step="1" placeholder="Total de parcelas" />
-            <input id="currentInstallmentInput" class="hidden" type="number" min="1" step="1" placeholder="Parcela atual" />
-            <select id="refundStatusInput">
-              <option>Não se aplica</option>
-              <option>Pendente</option>
-              <option>Recebido</option>
-            </select>
-            <input id="refundCompanyInput" placeholder="Empresa reembolso. Ex.: Syngenta" />
-          </div>
-
-          <div class="form-grid full" style="margin-top:10px;">
-            <textarea id="notesInput" placeholder="Observações"></textarea>
-          </div>
-
-          <div class="form-actions">
-            <button id="saveTransactionButton">Salvar lançamento</button>
-            <button id="clearFormButton" class="secondary">Limpar formulário</button>
-            <button id="cancelEditButton" class="danger hidden">Cancelar edição</button>
-          </div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h3>Lançamentos</h3>
-            <span class="small" id="transactionCount">0 itens</span>
-          </div>
-          <div class="transactions" id="transactionsList"></div>
-        </article>
-      </div>
-
-      <div>
-        <article class="panel">
-          <div class="panel-title">
-            <h3>Compras por impulso</h3>
-          </div>
-          <div class="metric-value" id="impulseCard">R$ 0,00</div>
-          <p class="small">Indicador comportamental: mostra o que não era necessidade nem estava planejado.</p>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h3>Reembolsos</h3>
-          </div>
-          <div id="refundList"></div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h3>Parcelamentos futuros</h3>
-          </div>
-          <div id="futureInstallments"></div>
-        </article>
-      </div>
-    </section>
-
-    <p class="footer-note">
-      Versão ponte: funciona localmente, importa/exporta JSON e pode ser evoluída para banco online depois.
-    </p>
+  <main>
+    <section id="summary" class="view active"></section>
+    <section id="cash" class="view"></section>
+    <section id="installments" class="view"></section>
+    <section id="receivables" class="view"></section>
+    <section id="payables" class="view"></section>
+    <section id="fixed" class="view"></section>
+    <section id="goals" class="view"></section>
+    <section id="history" class="view"></section>
+    <section id="setup" class="view"></section>
   </main>
-
-  <script src="app.js"></script>
+</div>
+<script src="app.js"></script>
 </body>
 </html>
