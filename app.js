@@ -6,7 +6,7 @@ const MONTHS = [
   ["sep", "Set"], ["oct", "Out"], ["nov", "Nov"], ["dec", "Dez"]
 ];
 
-const CATS = ["Alimentação", "Saúde", "Beleza", "Transporte", "Educação", "Casa", "Lazer", "Livros", "Assinaturas", "Outros"];
+const DEFAULT_CATS = ["Alimentação", "Saúde", "Beleza", "Transporte", "Educação", "Casa", "Lazer", "Livros", "Assinaturas", "Outros"];
 
 const EMPTY = {
   activeCycleId: null,
@@ -18,13 +18,17 @@ const EMPTY = {
   payables: [],
   fixedBills: [],
   goals: [],
-  history: []
+  history: [],
+  categories: [...DEFAULT_CATS]
 };
 let state = load();
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) || structuredClone(EMPTY) }
-  catch { return structuredClone(EMPTY) }
+  try {
+    const data = JSON.parse(localStorage.getItem(KEY)) || structuredClone(EMPTY);
+    if (!data.categories?.length) data.categories = [...DEFAULT_CATS];
+    return data;
+  } catch { return structuredClone(EMPTY) }
 }
 
 function save() {
@@ -266,7 +270,7 @@ function renderCash() {
           <input id="cashDesc" placeholder="Descrição" required>
           <input id="cashDate" type="date" required>
           <input id="cashValue" type="number" min="0" step="0.01" placeholder="Valor" required>
-          <select id="cashCat">${options(CATS)}</select>
+          <select id="cashCat">${options(state.categories)}</select>
           <select id="cashShared">
             <option>Não compartilhado</option>
             <option>Compartilhado / reembolso</option>
@@ -397,7 +401,7 @@ function renderInstallments() {
           <input id="instTotal" type="number" min="0" step="0.01" placeholder="Valor total" required>
           <input id="instN" type="number" min="1" step="1" placeholder="Parcelas" required>
           <input id="instCurrent" type="number" min="1" step="1" placeholder="Parcela atual" required>
-          <select id="instCat">${options(CATS)}</select>
+          <select id="instCat">${options(state.categories)}</select>
           <textarea id="instNotes" placeholder="Observações"></textarea>
           <div class="actions full">
             <button class="primary">Salvar</button>
@@ -619,7 +623,7 @@ function renderFixed() {
             <option>Até uma data</option>
             <option>Por ocorrências</option>
           </select>
-          <select id="fixedCat">${options(CATS)}</select>
+          <select id="fixedCat">${options(state.categories)}</select>
           <div class="actions full">
             <button class="primary">Salvar</button>
             <button type="button" class="secondary" onclick="render()">Limpar</button>
@@ -831,6 +835,16 @@ function renderHistory() {
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
+function categoryListHtml() {
+  return `<div class="cat-tags">
+    ${state.categories.map((c, idx) => `
+      <span class="cat-tag">
+        ${escape(c)}
+        <button class="cat-remove" data-cat-idx="${idx}" title="Remover">×</button>
+      </span>`).join('')}
+  </div>`;
+}
+
 function renderSetup() {
   setup.innerHTML = `
     <div class="grid two">
@@ -856,6 +870,12 @@ function renderSetup() {
           <label class="file-label">Importar JSON<input id="importFile" type="file" accept=".json,application/json"></label>
           <button class="danger" id="resetBtn">Zerar</button>
         </div>
+        <h2 class="gap">Categorias</h2>
+        <div class="cat-input-row">
+          <input id="catInput" placeholder="Nova categoria">
+          <button type="button" class="secondary" id="addCatBtn">Adicionar</button>
+        </div>
+        ${categoryListHtml()}
       </div>
       <div class="panel">
         <h2 id="incomeTitle">Fonte de renda anual</h2>
@@ -976,6 +996,23 @@ function bindSetup() {
       render();
     }
   };
+  addCatBtn.onclick = () => {
+    const name = catInput.value.trim();
+    if (!name || state.categories.includes(name)) { catInput.value = ''; return; }
+    state.categories.push(name);
+    catInput.value = '';
+    save();
+    render();
+  };
+  catInput.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); addCatBtn.click(); }
+  };
+  document.querySelectorAll('[data-cat-idx]').forEach(b => b.onclick = () => {
+    if (state.categories.length <= 1) return;
+    state.categories.splice(Number(b.dataset.catIdx), 1);
+    save();
+    render();
+  });
 }
 
 function generateCycles(year, mode, closeDay) {

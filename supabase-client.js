@@ -43,7 +43,7 @@ export async function getCurrentUser() {
 // Executa uma função sempre que o estado de login mudar
 // (ex: usuário fez login, logout, ou a sessão expirou)
 export function onAuthStateChange(callback) {
-  supabase.auth.onAuthStateChange((event, session) => {
+  return supabase.auth.onAuthStateChange((event, session) => {
     callback(event, session);
   });
 }
