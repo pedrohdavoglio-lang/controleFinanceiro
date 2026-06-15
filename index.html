@@ -7,7 +7,27 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="app">
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-avatar">M</div>
+      <h1>Meu Financeiro</h1>
+      <p>Planejador financeiro por ciclos</p>
+    </div>
+    <form id="loginForm">
+      <input id="loginEmail" type="email" placeholder="E-mail" required autocomplete="email">
+      <input id="loginPassword" type="password" placeholder="Senha" required autocomplete="current-password">
+      <p id="loginError" class="login-error"></p>
+      <div class="login-actions">
+        <button type="submit" id="loginBtn" class="primary">Entrar</button>
+        <button type="button" id="signupBtn" class="secondary">Criar conta</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none">
   <header class="header">
     <div>
       <h1>Meu Financeiro</h1>
@@ -20,6 +40,7 @@
         <span id="cycleDates">Gere ciclos no Perfil</span>
       </div>
       <button id="profileBtn" class="profile-btn"><span class="avatar">M</span> Perfil</button>
+      <button id="logoutBtn" class="logout-btn">Sair</button>
     </div>
   </header>
 
@@ -46,6 +67,8 @@
     <section id="setup" class="view"></section>
   </main>
 </div>
+
 <script src="app.js"></script>
+<script type="module" src="auth.js"></script>
 </body>
 </html>
