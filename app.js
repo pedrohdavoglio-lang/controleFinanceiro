@@ -1,12 +1,11 @@
-const KEY = "financeiro_validacao_ciclo_v1";
+import * as db from './db.js';
+import { DEFAULT_CATS } from './db.js';
 
 const MONTHS = [
   ["jan", "Jan"], ["feb", "Fev"], ["mar", "Mar"], ["apr", "Abr"],
   ["may", "Mai"], ["jun", "Jun"], ["jul", "Jul"], ["aug", "Ago"],
   ["sep", "Set"], ["oct", "Out"], ["nov", "Nov"], ["dec", "Dez"]
 ];
-
-const DEFAULT_CATS = ["Alimentação", "Saúde", "Beleza", "Transporte", "Educação", "Casa", "Lazer", "Livros", "Assinaturas", "Outros"];
 
 const EMPTY = {
   activeCycleId: null,
@@ -21,18 +20,12 @@ const EMPTY = {
   history: [],
   categories: [...DEFAULT_CATS]
 };
-let state = load();
 
-function load() {
-  try {
-    const data = JSON.parse(localStorage.getItem(KEY)) || structuredClone(EMPTY);
-    if (!data.categories?.length) data.categories = [...DEFAULT_CATS];
-    return data;
-  } catch { return structuredClone(EMPTY) }
-}
+let state = structuredClone(EMPTY);
 
-function save() {
-  localStorage.setItem(KEY, JSON.stringify(state));
+function dbErr(err) {
+  console.error(err);
+  alert('Erro ao salvar no banco: ' + (err.message || err));
 }
 
 function uid(p) {
@@ -182,6 +175,7 @@ function render() {
   renderHistory();
   renderSetup();
 }
+window.render = render;
 
 function renderHeader() {
   const c = cycle();
@@ -317,22 +311,24 @@ function renderCash() {
     if (item.shared && item.sharedValue > 0) {
       const rid = item.receivableId || uid("rec");
       item.receivableId = rid;
-      upsert(state.receivables, {
+      const rec = {
         id: rid,
         entity: item.sharedEntity || "Sem entidade",
         description: item.description,
         value: item.sharedValue,
         dueDate: item.date,
-        status: state.receivables.find(r => r.id === rid)?.status || "Pendente",
-        origin: "cash"
-      });
+        status: state.receivables.find(r => r.id === rid)?.status || "Pendente"
+      };
+      upsert(state.receivables, rec);
+      db.upsertReceivable(rec).catch(dbErr);
     } else if (item.receivableId) {
+      db.deleteReceivable(item.receivableId).catch(dbErr);
       remove(state.receivables, item.receivableId);
       item.receivableId = null;
     }
     upsert(state.cashExpenses, item);
-    save();
     render();
+    db.upsertCash(item).catch(dbErr);
   };
   bindCash();
 }
@@ -373,10 +369,13 @@ function bindCash() {
   document.querySelectorAll("[data-del-cash]").forEach(b => b.onclick = () => {
     if (!confirm("Excluir gasto?")) return;
     const i = state.cashExpenses.find(x => x.id === b.dataset.delCash);
-    if (i?.receivableId) remove(state.receivables, i.receivableId);
+    if (i?.receivableId) {
+      remove(state.receivables, i.receivableId);
+      db.deleteReceivable(i.receivableId).catch(dbErr);
+    }
     remove(state.cashExpenses, b.dataset.delCash);
-    save();
     render();
+    db.deleteCash(b.dataset.delCash).catch(dbErr);
   });
 }
 
@@ -430,8 +429,8 @@ function renderInstallments() {
     };
     if (!item.description || item.totalValue <= 0) return alert("Preencha descrição e valor.");
     upsert(state.installments, item);
-    save();
     render();
+    db.upsertInst(item).catch(dbErr);
   };
   bindInst();
 }
@@ -471,9 +470,10 @@ function bindInst() {
   });
   document.querySelectorAll("[data-del-inst]").forEach(b => b.onclick = () => {
     if (!confirm("Excluir parcelada?")) return;
-    remove(state.installments, b.dataset.delInst);
-    save();
+    const id = b.dataset.delInst;
+    remove(state.installments, id);
     render();
+    db.deleteInst(id).catch(dbErr);
   });
 }
 
@@ -537,8 +537,8 @@ function renderEntity(key, label, doneStatus) {
       };
     if (!item.entity || !item.description || item.value <= 0) return alert("Preencha entidade, descrição e valor.");
     upsert(list, item);
-    save();
     render();
+    (isRec ? db.upsertReceivable(item) : db.upsertPayable(item)).catch(dbErr);
   };
   bindEntity(key, doneStatus);
 }
@@ -569,11 +569,13 @@ function entityListHtml(key, list, doneStatus) {
 }
 
 function bindEntity(key, doneStatus) {
+  const isRec = key === "receivables";
   document.querySelectorAll(`[data-status-${key}]`).forEach(b => b.onclick = () => {
     const i = state[key].find(x => x.id === b.dataset[`status${cap(key)}`]);
-    if (i) i.status = i.status === "Pendente" ? doneStatus : "Pendente";
-    save();
+    if (!i) return;
+    i.status = i.status === "Pendente" ? doneStatus : "Pendente";
     render();
+    (isRec ? db.upsertReceivable(i) : db.upsertPayable(i)).catch(dbErr);
   });
   document.querySelectorAll(`[data-edit-${key}]`).forEach(b => b.onclick = () => {
     const i = state[key].find(x => x.id === b.dataset[`edit${cap(key)}`]);
@@ -586,9 +588,10 @@ function bindEntity(key, doneStatus) {
   });
   document.querySelectorAll(`[data-del-${key}]`).forEach(b => b.onclick = () => {
     if (!confirm("Excluir lançamento?")) return;
-    remove(state[key], b.dataset[`del${cap(key)}`]);
-    save();
+    const id = b.dataset[`del${cap(key)}`];
+    remove(state[key], id);
     render();
+    (isRec ? db.deleteReceivable(id) : db.deletePayable(id)).catch(dbErr);
   });
 }
 
@@ -653,8 +656,8 @@ function renderFixed() {
       };
     if (!item.name || item.expectedValue <= 0) return alert("Preencha nome e valor.");
     upsert(state.fixedBills, item);
-    save();
     render();
+    db.upsertFixed(item).catch(dbErr);
   };
   bindFixed();
 }
@@ -680,9 +683,10 @@ function fixedList() {
 function bindFixed() {
   document.querySelectorAll("[data-status-fixed]").forEach(b => b.onclick = () => {
     const i = state.fixedBills.find(x => x.id === b.dataset.statusFixed);
+    if (!i) return;
     i.status = i.status === "Pendente" ? "Pago" : "Pendente";
-    save();
     render();
+    db.upsertFixed(i).catch(dbErr);
   });
   document.querySelectorAll("[data-edit-fixed]").forEach(b => b.onclick = () => {
     const i = state.fixedBills.find(x => x.id === b.dataset.editFixed);
@@ -698,9 +702,10 @@ function bindFixed() {
   });
   document.querySelectorAll("[data-del-fixed]").forEach(b => b.onclick = () => {
     if (!confirm("Excluir conta fixa?")) return;
-    remove(state.fixedBills, b.dataset.delFixed);
-    save();
+    const id = b.dataset.delFixed;
+    remove(state.fixedBills, id);
     render();
+    db.deleteFixed(id).catch(dbErr);
   });
 }
 
@@ -757,8 +762,8 @@ function renderGoals() {
       };
     if (!item.name || item.target <= 0) return alert("Preencha nome e meta.");
     upsert(state.goals, item);
-    save();
     render();
+    db.upsertGoal(item).catch(dbErr);
   };
   bindGoals();
 }
@@ -798,9 +803,10 @@ function bindGoals() {
   });
   document.querySelectorAll("[data-del-goal]").forEach(b => b.onclick = () => {
     if (!confirm("Excluir objetivo?")) return;
-    remove(state.goals, b.dataset.delGoal);
-    save();
+    const id = b.dataset.delGoal;
+    remove(state.goals, id);
     render();
+    db.deleteGoal(id).catch(dbErr);
   });
 }
 
@@ -903,8 +909,8 @@ function renderSetup() {
   cycleForm.onsubmit = e => {
     e.preventDefault();
     generateCycles(Number(cycleYear.value), cycleMode.value, Number(closeDay.value || 15));
-    save();
     render();
+    db.saveCycles(state.cycles, state.activeCycleId).catch(dbErr);
   };
   incomeForm.onsubmit = e => {
     e.preventDefault();
@@ -926,8 +932,8 @@ function renderSetup() {
     };
     if (!item.source) return alert("Informe a fonte.");
     upsert(state.incomes, item);
-    save();
     render();
+    db.upsertIncome(item).catch(dbErr);
   };
   bindSetup();
 }
@@ -967,8 +973,8 @@ function incomeList() {
 function bindSetup() {
   document.querySelectorAll("[data-active]").forEach(b => b.onclick = () => {
     state.activeCycleId = b.dataset.active;
-    save();
     render();
+    db.saveSettings(state.activeCycleId).catch(dbErr);
   });
   document.querySelectorAll("[data-edit-income]").forEach(b => b.onclick = () => {
     const i = state.incomes.find(x => x.id === b.dataset.editIncome);
@@ -982,9 +988,10 @@ function bindSetup() {
   });
   document.querySelectorAll("[data-del-income]").forEach(b => b.onclick = () => {
     if (!confirm("Excluir renda?")) return;
-    remove(state.incomes, b.dataset.delIncome);
-    save();
+    const id = b.dataset.delIncome;
+    remove(state.incomes, id);
     render();
+    db.deleteIncome(id).catch(dbErr);
   });
   closeCycleBtn.onclick = closeCycle;
   exportBtn.onclick = exportData;
@@ -992,8 +999,8 @@ function bindSetup() {
   resetBtn.onclick = () => {
     if (confirm("Zerar tudo?")) {
       state = structuredClone(EMPTY);
-      save();
       render();
+      db.resetAll().catch(dbErr);
     }
   };
   addCatBtn.onclick = () => {
@@ -1001,8 +1008,8 @@ function bindSetup() {
     if (!name || state.categories.includes(name)) { catInput.value = ''; return; }
     state.categories.push(name);
     catInput.value = '';
-    save();
     render();
+    db.saveCategories(state.categories);
   };
   catInput.onkeydown = e => {
     if (e.key === 'Enter') { e.preventDefault(); addCatBtn.click(); }
@@ -1010,8 +1017,8 @@ function bindSetup() {
   document.querySelectorAll('[data-cat-idx]').forEach(b => b.onclick = () => {
     if (state.categories.length <= 1) return;
     state.categories.splice(Number(b.dataset.catIdx), 1);
-    save();
     render();
+    db.saveCategories(state.categories);
   });
 }
 
@@ -1039,12 +1046,12 @@ function generateCycles(year, mode, closeDay) {
   state.activeCycleId = state.cycles[0]?.id || null;
 }
 
-function closeCycle() {
+async function closeCycle() {
   const cy = cycle();
   if (!cy) return alert("Gere ciclos primeiro.");
   if (!confirm("Encerrar ciclo atual?")) return;
   const c = calc();
-  state.history.unshift({
+  const historyEntry = {
     id: uid("hist"),
     name: cy.name,
     start: cy.start,
@@ -1053,25 +1060,35 @@ function closeCycle() {
     spent: c.cash + c.inst + c.payP + c.payD + c.fixP + c.fixD + c.goalCycle,
     leftover: c.projected,
     closedAt: new Date().toISOString()
-  });
+  };
+  state.history.unshift(historyEntry);
   cy.closed = true;
   const idx = state.cycles.findIndex(x => x.id === cy.id);
-  state.activeCycleId = state.cycles[idx + 1]?.id || cy.id;
+  const nextCycleId = state.cycles[idx + 1]?.id || cy.id;
+  state.activeCycleId = nextCycleId;
   state.cashExpenses = [];
   state.receivables = [];
   state.payables = [];
-  state.installments = state.installments
+  const survivors = state.installments
     .filter(i => Number(i.currentInstallment) < Number(i.installments))
     .map(i => ({ ...i, currentInstallment: Number(i.currentInstallment) + 1 }));
+  state.installments = survivors;
   state.fixedBills = state.fixedBills.map(i => ({ ...i, status: "Pendente" }));
   state.goals = state.goals.map(i => ({
     ...i,
     current: Number(i.current || 0) + Number(i.cycleContribution || 0),
     cycleContribution: Number(i.recurringContribution || 0)
   }));
-  save();
   render();
   switchView("summary");
+  db.closeCycleInDb({
+    historyEntry,
+    updatedCycle: cy,
+    nextCycleId,
+    survivors,
+    updatedFixed: state.fixedBills,
+    updatedGoals: state.goals
+  }).catch(dbErr);
 }
 
 function exportData() {
@@ -1089,8 +1106,8 @@ function importData(e) {
   r.onload = () => {
     try {
       state = JSON.parse(r.result);
-      save();
       render();
+      db.saveAll(state).catch(dbErr);
       alert("Importado.");
     } catch {
       alert("Arquivo inválido.");
@@ -1110,4 +1127,19 @@ function switchView(id) {
 
 document.querySelectorAll(".tab").forEach(b => b.onclick = () => switchView(b.dataset.view));
 profileBtn.onclick = () => switchView("setup");
-render();
+
+// ─── Init / Auth hooks (chamados pelo auth.js) ────────────────────────────────
+
+export async function initApp() {
+  try {
+    state = await db.loadAll();
+  } catch (err) {
+    console.error("Erro ao carregar dados:", err);
+    state = structuredClone(EMPTY);
+  }
+  render();
+}
+
+export function clearApp() {
+  state = structuredClone(EMPTY);
+}

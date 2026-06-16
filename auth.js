@@ -1,4 +1,5 @@
 import { signIn, signUp, signOut, onAuthStateChange } from './supabase-client.js';
+import { initApp, clearApp } from './app.js';
 
 const loginScreen  = document.getElementById('loginScreen');
 const mainApp      = document.getElementById('mainApp');
@@ -26,8 +27,13 @@ function setMsg(msg, isSuccess = false) {
 }
 
 onAuthStateChange((event, session) => {
-  if (session?.user) showApp();
-  else showLogin();
+  if (session?.user) {
+    showApp();
+    initApp();
+  } else {
+    showLogin();
+    clearApp();
+  }
 });
 
 loginForm.onsubmit = async e => {
