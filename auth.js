@@ -11,9 +11,10 @@ const loginBtn     = document.getElementById('loginBtn');
 const signupBtn    = document.getElementById('signupBtn');
 const logoutBtn    = document.getElementById('logoutBtn');
 
-function showApp() {
+function showApp(email) {
   loginScreen.style.display = 'none';
   mainApp.style.display = '';
+  document.getElementById('avatarLetter').textContent = (email?.[0] ?? '?').toUpperCase();
 }
 
 function showLogin() {
@@ -26,9 +27,9 @@ function setMsg(msg, isSuccess = false) {
   loginError.className = isSuccess ? 'login-error login-success' : 'login-error';
 }
 
-onAuthStateChange((event, session) => {
+onAuthStateChange((_event, session) => {
   if (session?.user) {
-    showApp();
+    showApp(session.user.email);
     initApp();
   } else {
     showLogin();
